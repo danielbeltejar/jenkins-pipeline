@@ -77,6 +77,9 @@ pipeline {
             }
         }
         stage('Build Docker Image') {
+            when {
+                expression { env.APP_NAME != 'apigw' }
+            }
             steps {
                 container('kaniko') {
                     script {
