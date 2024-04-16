@@ -43,7 +43,8 @@ pipeline {
         DISCORD_CREDENTIALS = credentials('DISCORD_CREDENTIALS')
         HARBOR_CREDENTIALS = credentials('HARBOR_CREDENTIALS')
         
-        GIT_URL = "${params.GIT_URL}"
+        GIT_URL = "${params.GIT_URL.split("github.com/"[1])}"
+        GIT_URL = "https://${GIT_CREDENTIALS}@github.com/${GIT_URL}"
         APP_NAME = "${params.APP_NAME}"
         
         APP_DIRECTORY = "${APP_NAME}"
