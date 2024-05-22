@@ -50,7 +50,7 @@ pipeline {
         REGISTRY_URL = "core.harbor.domain"
         HELM_RELEASE_NAME = "${JOB_NAME.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase()}"
         HELM_CHART_DIR = "k8s/"
-        IMAGE_REPO = "${GIT_URL.tokenize("/")[-1].replaceAll(".git", "")}"
+        IMAGE_REPO = "${GIT_URL.tokenize("/")[-1].replaceAll(".git", "").toLowerCase()}"
         IMAGE_VERSION_TAG = "${env.BUILD_NUMBER}"
     }
 
