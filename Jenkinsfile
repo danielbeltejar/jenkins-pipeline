@@ -91,6 +91,7 @@ pipeline {
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${APP_NAME}:${IMAGE_VERSION_TAG} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${APP_NAME}:latest \
                         --cache=false \
+                        --use-new-run \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
                         """
                     }
