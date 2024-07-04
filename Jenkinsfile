@@ -21,7 +21,7 @@ pipeline {
                 - name: ca-certificate
                   mountPath: /kaniko/.docker/certs/
               - name: helm
-                image: 'alpine/helm'
+                image: 'cgr.dev/chainguard/helm:latest-dev'
                 command:
                 - sleep
                 args:
