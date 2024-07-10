@@ -83,6 +83,10 @@ pipeline {
             steps {
                 container('kaniko') {
                     script {
+                        def dockerfileContent = readFile("${APP_NAME}/Dockerfile")
+                        def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
+                        def ignorePathOption = fromCount > 1 ? '--ignore-path /' : ''
+                        
                         sh """
                         cd ${APP_NAME}
                         /kaniko/executor \
@@ -93,7 +97,8 @@ pipeline {
                         --cache=true \
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
-                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
+                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt" \
+                        ${ignorePathOption}
                         """
                     }
                 }
