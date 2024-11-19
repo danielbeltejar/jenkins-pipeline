@@ -70,7 +70,7 @@ pipeline {
                 container('kaniko') {
                     script {
                         sh '''
-                        #echo "10.101.105.93 ${REGISTRY_URL}" | tee -a /etc/hosts
+                        echo "192.168.1.105 ${REGISTRY_URL}" | tee -a /etc/hosts
                         '''
                     }
                 }
@@ -97,7 +97,6 @@ pipeline {
                         --cache=true \
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
-                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt" \
                         ${ignorePathOption}
                         """
                     }
