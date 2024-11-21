@@ -98,6 +98,7 @@ pipeline {
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt" \
+                        ${ignorePathOption}
                         """
                     }
                 }
