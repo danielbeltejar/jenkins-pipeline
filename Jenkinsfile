@@ -130,7 +130,8 @@ pipeline {
                         git config --global user.email "jenkins@ci.local"
                         git config --global user.name "Jenkins"
                         git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts-repo
-                        cp ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/${APP_NAME}.tgz
+                        cp ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/
+                        mv -f helm-repo/charts/${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/${APP_NAME}.tgz
                         cd helm-repo
                         git add charts/${APP_NAME}.tgz
                         git commit -m "Add Helm package for ${APP_NAME} version ${IMAGE_VERSION_TAG}"
