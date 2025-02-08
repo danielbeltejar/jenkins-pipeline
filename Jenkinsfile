@@ -131,7 +131,7 @@ pipeline {
                         git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts
                         mkdir -p helm-charts/charts/${IMAGE_REPO}/
                         rm -rf helm-charts/charts/${IMAGE_REPO}/${APP_NAME}/*
-                        cp -rf ${HELM_CHART_DIR}* helm-charts/charts/${IMAGE_REPO}/
+                        cp -rf ${HELM_CHART_DIR}* helm-charts/charts/${IMAGE_REPO}/${APP_NAME}/
                         cd helm-charts
                         git add charts/${IMAGE_REPO}/${APP_NAME}
                         git commit -m "Add Helm package for ${IMAGE_REPO}-${APP_NAME} version ${IMAGE_VERSION_TAG}"
