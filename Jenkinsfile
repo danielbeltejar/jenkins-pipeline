@@ -26,7 +26,6 @@ pipeline {
                 - sleep
                 args:
                 - infinity
-              restartPolicy: Never
               - name: git
                 image: 'alpine/git'
                 command:
@@ -131,9 +130,9 @@ pipeline {
                         git config --global user.email "jenkins@ci.local"
                         git config --global user.name "Jenkins"
                         git clone ${GIT_URL} helm-repo
-                        mv ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/
+                        cp ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/${APP_NAME}.tgz
                         cd helm-repo
-                        git add charts/${APP_NAME}-${IMAGE_VERSION_TAG}.tgz
+                        git add charts/${APP_NAME}.tgz
                         git commit -m "Add Helm package for ${APP_NAME} version ${IMAGE_VERSION_TAG}"
                         git push origin develop
                         """
