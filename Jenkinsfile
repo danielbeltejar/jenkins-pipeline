@@ -27,7 +27,7 @@ pipeline {
                 args:
                 - infinity
               - name: git
-                image: 'cgr.dev/chainguard/git:latest'
+                image: 'docker.io/alpine/git'
                 command:
                 - sleep
                 args:
