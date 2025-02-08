@@ -52,7 +52,6 @@ pipeline {
         GIT_URL = "https://${GIT_CREDENTIALS}@github.com/${params.GIT_URL.split('github.com/')[1]}"
         APP_NAME = "${params.APP_NAME}"
         
-        APP_DIRECTORY = "${APP_NAME}"
         REGISTRY_URL = "harbor.server.local"
         HELM_RELEASE_NAME = "${JOB_NAME.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase()}"
         HELM_CHART_DIR = "k8s/"
@@ -130,10 +129,10 @@ pipeline {
                         git config --global user.email "jenkins@ci.local"
                         git config --global user.name "Jenkins"
                         git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts
-                        cp -f ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-charts/charts/${APP_NAME}.tgz
+                        cp -f ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-charts/charts/${IMAGE_REPO}-${APP_NAME}.tgz
                         cd helm-charts
-                        git add charts/${APP_NAME}.tgz
-                        git commit -m "Add Helm package for ${APP_NAME} version ${IMAGE_VERSION_TAG}"
+                        git add charts/${IMAGE_REPO}-${APP_NAME}.tgz
+                        git commit -m "Add Helm package for ${IMAGE_REPO}-${APP_NAME} version ${IMAGE_VERSION_TAG}"
                         git push origin develop
                         """
                     }
