@@ -27,6 +27,13 @@ pipeline {
                 args:
                 - infinity
               restartPolicy: Never
+              - name: git
+                image: 'alpine/git'
+                command:
+                - sleep
+                args:
+                - infinity
+              restartPolicy: Never
               volumes:
               - name: docker-config
                 configMap:
@@ -111,6 +118,25 @@ pipeline {
                         sh """
                         cd ${APP_NAME}
                         helm package ${HELM_CHART_DIR} --version=${IMAGE_VERSION_TAG} --app-version=${IMAGE_VERSION_TAG}"""
+                    }
+                }
+            }
+        }
+        stage('Upload Helm Package to GitHub') {
+            steps {
+                container('git') {
+                    script {
+                        sh """
+                        cd ${APP_NAME}
+                        git config --global user.email "jenkins@ci.local"
+                        git config --global user.name "Jenkins"
+                        git clone ${GIT_URL} helm-repo
+                        mv ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-repo/charts/
+                        cd helm-repo
+                        git add charts/${APP_NAME}-${IMAGE_VERSION_TAG}.tgz
+                        git commit -m "Add Helm package for ${APP_NAME} version ${IMAGE_VERSION_TAG}"
+                        git push origin develop
+                        """
                     }
                 }
             }
