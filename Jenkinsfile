@@ -129,6 +129,7 @@ pipeline {
                         git config --global user.email "jenkins@ci.local"
                         git config --global user.name "Jenkins"
                         git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts
+                        mkdir -p helm-charts/charts/${IMAGE_REPO}/
                         cp -f ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz helm-charts/charts/${IMAGE_REPO}/${APP_NAME}.tgz
                         cd helm-charts
                         git add charts/${IMAGE_REPO}-${APP_NAME}.tgz
