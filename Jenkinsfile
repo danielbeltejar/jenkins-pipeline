@@ -21,13 +21,13 @@ pipeline {
                 - name: ca-certificate
                   mountPath: /kaniko/.docker/certs/
               - name: helm
-                image: 'alpine/helm'
+                image: 'mirror.gcr.io/alpine/helm'
                 command:
                 - sleep
                 args:
                 - infinity
               - name: git
-                image: 'docker.io/alpine/git'
+                image: 'mirror.gcr.io/alpine/git'
                 command:
                 - sleep
                 args:
