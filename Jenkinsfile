@@ -115,6 +115,7 @@ pipeline {
                     script {
                         sh """
                         cd ${APP_NAME}
+                        sed -i 's/^appVersion:.*/appVersion: ${IMAGE_VERSION_TAG}/' ${HELM_CHART_DIR}/Chart.yaml
                         helm package ${HELM_CHART_DIR} --version=${IMAGE_VERSION_TAG} --app-version=${IMAGE_VERSION_TAG}"""
                     }
                 }
