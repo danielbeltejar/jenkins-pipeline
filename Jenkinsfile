@@ -49,7 +49,7 @@ pipeline {
         DISCORD_CREDENTIALS = credentials('DISCORD_CREDENTIALS')
         HARBOR_CREDENTIALS = credentials('HARBOR_CREDENTIALS')
         
-        GIT_URL = "https://${GIT_CREDENTIALS}@github.com/${params.GIT_URL.split('github.com/')[1]}"
+        GIT_URL = "https://github.com/${params.GIT_URL.split('github.com/')[1]}"
         APP_NAME = "${params.APP_NAME}"
         
         REGISTRY_URL = "harbor.server.local"
@@ -65,7 +65,7 @@ pipeline {
                 container('kaniko') {
                     checkout([$class: 'GitSCM',
                               branches: [[name: 'main']],
-                              userRemoteConfigs: [[url: "${GIT_URL}"]]
+                              userRemoteConfigs: [[url: "${GIT_URL}", credentialsId: 'GITHUB_AUTH_TOKEN']]
                     ])
                 }
             }
