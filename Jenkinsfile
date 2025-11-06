@@ -44,6 +44,10 @@ pipeline {
         }
     }
 
+    parameters {
+        booleanParam(name: 'BUILD_ROOT', defaultValue: false, description: 'Build from repo root instead of subdir')
+    }
+
     environment {
         GIT_CREDENTIALS = credentials('GITHUB_AUTH_TOKEN')
         DISCORD_CREDENTIALS = credentials('DISCORD_CREDENTIALS')
@@ -51,6 +55,7 @@ pipeline {
         
         GIT_URL = "https://github.com/${params.GIT_URL.split('github.com/')[1]}"
         APP_NAME = "${params.APP_NAME}"
+        BUILD_ROOT = "${params.BUILD_ROOT}"
         
         REGISTRY_URL = "harbor.server.local"
         HELM_RELEASE_NAME = "${JOB_NAME.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase()}"
@@ -88,17 +93,20 @@ pipeline {
             steps {
                 container('kaniko') {
                     script {
-                        def dockerfileContent = readFile("${APP_NAME}/Dockerfile")
+                        def buildRoot = params.BUILD_ROOT
+                        def appDir = buildRoot ? '.' : APP_NAME
+                        def appName = buildRoot ? IMAGE_REPO : APP_NAME
+                        def dockerfileContent = readFile("${appDir}/Dockerfile")
                         def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
                         def ignorePathOption = fromCount > 1 ? '--ignore-path /' : ''
                         
                         sh """
-                        cd ${APP_NAME}
+                        cd ${appDir}
                         /kaniko/executor \
                         --context=`pwd` \
                         --dockerfile=`pwd`/Dockerfile \
-                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${APP_NAME}:${IMAGE_VERSION_TAG} \
-                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${APP_NAME}:latest \
+                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG} \
+                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
                         --cache=false \
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
@@ -113,8 +121,10 @@ pipeline {
             steps {
                 container('helm') {
                     script {
+                        def buildRoot = params.BUILD_ROOT
+                        def appDir = buildRoot ? '.' : APP_NAME
                         sh """
-                        cd ${APP_NAME}
+                        cd ${appDir}
                         sed -i 's/^appVersion:.*/appVersion: ${IMAGE_VERSION_TAG}/' ${HELM_CHART_DIR}/Chart.yaml
                         helm package ${HELM_CHART_DIR} --version=${IMAGE_VERSION_TAG} --app-version=${IMAGE_VERSION_TAG}"""
                     }
@@ -126,17 +136,20 @@ pipeline {
                 lock(resource: 'helm-charts') {
                     container('git') {
                         script {
+                            def buildRoot = params.BUILD_ROOT
+                            def appDir = buildRoot ? '.' : APP_NAME
+                            def appName = buildRoot ? IMAGE_REPO : APP_NAME
                             sh """
-                            cd ${APP_NAME}
+                            cd ${appDir}
                             git config --global user.email "jenkins@ci.local"
                             git config --global user.name "Jenkins"
                             git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts
-                            mkdir -p helm-charts/charts/${IMAGE_REPO}/${APP_NAME}/
-                            rm -rf helm-charts/charts/${IMAGE_REPO}/${APP_NAME}/*
-                            cp -rf ${HELM_CHART_DIR}* helm-charts/charts/${IMAGE_REPO}/${APP_NAME}/
+                            mkdir -p helm-charts/charts/${IMAGE_REPO}/${appName}/
+                            rm -rf helm-charts/charts/${IMAGE_REPO}/${appName}/*
+                            cp -rf ${HELM_CHART_DIR}* helm-charts/charts/${IMAGE_REPO}/${appName}/
                             cd helm-charts
-                            git add charts/${IMAGE_REPO}/${APP_NAME}
-                            git commit -m "Add Helm package for ${IMAGE_REPO}-${APP_NAME} version ${IMAGE_VERSION_TAG}"
+                            git add charts/${IMAGE_REPO}/${appName}
+                            git commit -m "Add Helm package for ${IMAGE_REPO}-${appName} version ${IMAGE_VERSION_TAG}"
                             git push origin develop
                             """
                         }
@@ -148,9 +161,12 @@ pipeline {
             steps {
                 container('helm') {
                     script {
+                        def buildRoot = params.BUILD_ROOT
+                        def appDir = buildRoot ? '.' : APP_NAME
+                        def appName = buildRoot ? IMAGE_REPO : APP_NAME
                         sh """
-                        cd ${APP_NAME}
-                        helm upgrade --install ${HELM_RELEASE_NAME} ${APP_NAME}-${IMAGE_VERSION_TAG}.tgz --set registry=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}
+                        cd ${appDir}
+                        helm upgrade --install ${HELM_RELEASE_NAME} ${appName}-${IMAGE_VERSION_TAG}.tgz --set registry=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}
                         """
                     }
                 }
