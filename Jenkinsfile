@@ -45,7 +45,7 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'BUILD_ROOT', defaultValue: false, description: 'Build from repo root instead of subdir')
+        string(name: 'BUILD_ROOT', defaultValue: 'false', description: 'Build from repo root instead of subdir (true or false)')
     }
 
     environment {
@@ -93,7 +93,7 @@ pipeline {
             steps {
                 container('kaniko') {
                     script {
-                        def buildRoot = params.BUILD_ROOT
+                        def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
                         def appName = buildRoot ? IMAGE_REPO : APP_NAME
                         def dockerfileContent = readFile("${appDir}/Dockerfile")
@@ -121,7 +121,7 @@ pipeline {
             steps {
                 container('helm') {
                     script {
-                        def buildRoot = params.BUILD_ROOT
+                        def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
                         sh """
                         cd ${appDir}
@@ -136,7 +136,7 @@ pipeline {
                 lock(resource: 'helm-charts') {
                     container('git') {
                         script {
-                            def buildRoot = params.BUILD_ROOT
+                            def buildRoot = params.BUILD_ROOT == 'true'
                             def appDir = buildRoot ? '.' : APP_NAME
                             def appName = buildRoot ? IMAGE_REPO : APP_NAME
                             sh """
@@ -161,7 +161,7 @@ pipeline {
             steps {
                 container('helm') {
                     script {
-                        def buildRoot = params.BUILD_ROOT
+                        def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
                         def appName = buildRoot ? IMAGE_REPO : APP_NAME
                         sh """
