@@ -65,7 +65,7 @@ pipeline {
                 container('kaniko') {
                     checkout([$class: 'GitSCM',
                               branches: [[name: 'main']],
-                              userRemoteConfigs: [[url: "${GIT_URL}", credentialsId: 'GITHUB_AUTH_TOKEN']]
+                              userRemoteConfigs: [[url: "${GIT_URL}", credentialsId: "${GITHUB_AUTH_TOKEN}"]]
                     ])
                 }
             }
