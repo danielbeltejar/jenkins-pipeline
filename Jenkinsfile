@@ -95,7 +95,7 @@ pipeline {
                     script {
                         def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
-                        def appName = buildRoot ? IMAGE_REPO : APP_NAME
+                        def appName = APP_NAME
                         def dockerfileContent = readFile("${appDir}/Dockerfile")
                         def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
                         def ignorePathOption = fromCount > 1 ? '--ignore-path /' : ''
@@ -138,7 +138,7 @@ pipeline {
                         script {
                             def buildRoot = params.BUILD_ROOT == 'true'
                             def appDir = buildRoot ? '.' : APP_NAME
-                            def appName = buildRoot ? IMAGE_REPO : APP_NAME
+                            def appName = APP_NAME
                             sh """
                             cd ${appDir}
                             git config --global user.email "jenkins@ci.local"
@@ -163,7 +163,7 @@ pipeline {
                     script {
                         def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
-                        def appName = buildRoot ? IMAGE_REPO : APP_NAME
+                        def appName = APP_NAME
                         sh """
                         cd ${appDir}
                         helm upgrade --install ${HELM_RELEASE_NAME} ${appName}-${IMAGE_VERSION_TAG}.tgz --set registry=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}
