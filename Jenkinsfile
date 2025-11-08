@@ -97,7 +97,8 @@ pipeline {
                         def appDir = buildRoot ? '.' : APP_NAME
                         def appName = APP_NAME
                         def workspaceDir = env.WORKSPACE
-                        def dockerfileContent = readFile("${workspaceDir}/Dockerfile")
+                        def dockerfilePath = buildRoot ? "${workspaceDir}/Dockerfile" : "${workspaceDir}/${APP_NAME}/Dockerfile"
+                        def dockerfileContent = readFile(dockerfilePath)
                         def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
                         def ignorePathOption = fromCount > 1 ? '--ignore-path /' : ''
                         
@@ -105,7 +106,7 @@ pipeline {
                         cd ${appDir}
                         /kaniko/executor \
                         --context=`pwd` \
-                        --dockerfile=${workspaceDir}/Dockerfile \
+                        --dockerfile=${dockerfilePath} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
                         --cache=false \
