@@ -146,11 +146,11 @@ pipeline {
                             git config --global user.email "jenkins@ci.local"
                             git config --global user.name "Jenkins"
                             git clone https://${GIT_CREDENTIALS}@github.com/danielbeltejar/helm-charts.git helm-charts
-                            mkdir -p helm-charts/charts/${IMAGE_REPO}/${appName}/
-                            rm -rf helm-charts/charts/${IMAGE_REPO}/${appName}/*
-                            cp -rf ${HELM_CHART_DIR}* helm-charts/charts/${IMAGE_REPO}/${appName}/
+                            mkdir -p helm-charts/charts/app/${IMAGE_REPO}/${appName}/
+                            rm -rf helm-charts/charts/app/${IMAGE_REPO}/${appName}/*
+                            cp -rf ${HELM_CHART_DIR}* helm-charts/charts/app/${IMAGE_REPO}/${appName}/
                             cd helm-charts
-                            git add charts/${IMAGE_REPO}/${appName}
+                            git add charts/app/${IMAGE_REPO}/${appName}
                             git commit -m "Add Helm package for ${IMAGE_REPO}-${appName} version ${IMAGE_VERSION_TAG}"
                             git push origin develop
                             """
