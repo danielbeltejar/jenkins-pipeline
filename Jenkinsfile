@@ -97,6 +97,7 @@ pipeline {
                         def appDir = buildRoot ? '.' : APP_NAME
                         def appName = APP_NAME
                         def workspaceDir = env.WORKSPACE
+                        def cacheRepo = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}-cache"
                         def dockerfilePath = buildRoot ? "${workspaceDir}/Dockerfile" : "${workspaceDir}/${APP_NAME}/Dockerfile"
                         def dockerfileContent = readFile(dockerfilePath)
                         def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
@@ -109,7 +110,9 @@ pipeline {
                         --dockerfile=${dockerfilePath} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
-                        --cache=false \
+                        --cache=true \
+                        --cache-repo=${cacheRepo} \
+                        --cache-ttl=168h \
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt" \
