@@ -131,8 +131,14 @@ pipeline {
                         export DOCKER_CONFIG=/kaniko/.docker
 
                         if [ -f /kaniko/.docker/certs/ca.crt ]; then
-                            export SSL_CERT_FILE=/kaniko/.docker/certs/ca.crt
-                            export SSL_CERT_DIR=/kaniko/.docker/certs
+                            if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+                                cat /etc/ssl/certs/ca-certificates.crt /kaniko/.docker/certs/ca.crt > /tmp/ssl-ca-bundle.crt
+                            elif [ -f /etc/ssl/cert.pem ]; then
+                                cat /etc/ssl/cert.pem /kaniko/.docker/certs/ca.crt > /tmp/ssl-ca-bundle.crt
+                            else
+                                cp /kaniko/.docker/certs/ca.crt /tmp/ssl-ca-bundle.crt
+                            fi
+                            export SSL_CERT_FILE=/tmp/ssl-ca-bundle.crt
 
                             cat > /tmp/buildkitd.toml <<EOF
 [registry."${REGISTRY_URL}"]
