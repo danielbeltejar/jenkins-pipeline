@@ -135,7 +135,7 @@ pipeline {
 [registry."${REGISTRY_URL}"]
     ca=["/kaniko/.docker/certs/ca.crt"]
 EOF
-                                                    export BUILDKITD_FLAGS="$BUILDKITD_FLAGS --config /tmp/buildkitd.toml"
+                                                    export BUILDKITD_FLAGS="\$BUILDKITD_FLAGS --config /tmp/buildkitd.toml"
                                                 fi
 
                         buildctl-daemonless.sh build \
