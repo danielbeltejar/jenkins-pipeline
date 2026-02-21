@@ -1,4 +1,8 @@
 pipeline {
+    options {
+        timestamps()
+    }
+
     agent {
         kubernetes {
             inheritFrom 'kaniko'
@@ -125,6 +129,7 @@ pipeline {
             steps {
                 container('helm') {
                     script {
+                        echo "Starting Helm packaging for ${APP_NAME}:${IMAGE_VERSION_TAG}"
                         def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
                         sh """
@@ -140,6 +145,7 @@ pipeline {
                 lock(resource: 'helm-charts') {
                     container('git') {
                         script {
+                            echo "Starting Helm chart upload for ${APP_NAME}:${IMAGE_VERSION_TAG}"
                             def buildRoot = params.BUILD_ROOT == 'true'
                             def appDir = buildRoot ? '.' : APP_NAME
                             def appName = APP_NAME
@@ -165,6 +171,7 @@ pipeline {
             steps {
                 container('helm') {
                     script {
+                        echo "Starting Helm deploy for ${APP_NAME}:${IMAGE_VERSION_TAG}"
                         def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
                         def appName = APP_NAME
