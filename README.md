@@ -72,8 +72,6 @@ Soporta dos modos de operación basados en el parámetro `BUILD_ROOT`:
 
 ## Mejores Prácticas Implementadas
 
-- **Paralelización**: Builds múltiples en paralelo para eficiencia (si se implementa en futuras versiones).
-- **Detección automática**: No aplica; usa `APP_NAME` explícitamente.
 - **Seguridad**: Uso de credenciales y certificados.
 - **Escalabilidad**: Soporte para monorepo y subdirs específicos.
 - **Logging**: Salida detallada en consola.

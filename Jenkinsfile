@@ -99,9 +99,6 @@ pipeline {
                         def workspaceDir = env.WORKSPACE
                         def cacheRepo = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}-cache"
                         def dockerfilePath = buildRoot ? "${workspaceDir}/Dockerfile" : "${workspaceDir}/${APP_NAME}/Dockerfile"
-                        def dockerfileContent = readFile(dockerfilePath)
-                        def fromCount = dockerfileContent.split('\n').findAll { it.trim().startsWith('FROM') }.size()
-                        def ignorePathOption = fromCount > 1 ? '--ignore-path /' : ''
                         
                         sh """
                         cd ${appDir}
@@ -115,8 +112,7 @@ pipeline {
                         --cache-ttl=168h \
                         --cache-dir=/cache \
                         --snapshot-mode=redo \
-                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt" \
-                        ${ignorePathOption}
+                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
                         """
                     }
                 }
