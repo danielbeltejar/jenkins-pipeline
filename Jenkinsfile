@@ -108,9 +108,10 @@ pipeline {
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG} \
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
                         --cache=true \
+                        --cache-run-layers=true \
+                        --cache-copy-layers=true \
                         --cache-repo=${cacheRepo} \
                         --cache-ttl=168h \
-                        --cache-dir=/cache \
                         --snapshot-mode=redo \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
                         """
