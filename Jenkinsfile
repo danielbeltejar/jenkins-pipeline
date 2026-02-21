@@ -130,13 +130,16 @@ pipeline {
                         cd ${appDir}
                         export DOCKER_CONFIG=/kaniko/.docker
 
-                                                if [ -f /kaniko/.docker/certs/ca.crt ]; then
-                                                    cat > /tmp/buildkitd.toml <<EOF
+                        if [ -f /kaniko/.docker/certs/ca.crt ]; then
+                            export SSL_CERT_FILE=/kaniko/.docker/certs/ca.crt
+                            export SSL_CERT_DIR=/kaniko/.docker/certs
+
+                            cat > /tmp/buildkitd.toml <<EOF
 [registry."${REGISTRY_URL}"]
     ca=["/kaniko/.docker/certs/ca.crt"]
 EOF
-                                                    export BUILDKITD_FLAGS="\$BUILDKITD_FLAGS --config /tmp/buildkitd.toml"
-                                                fi
+                            export BUILDKITD_FLAGS="\$BUILDKITD_FLAGS --config /tmp/buildkitd.toml"
+                        fi
 
                         buildctl-daemonless.sh build \
                         --frontend dockerfile.v0 \
