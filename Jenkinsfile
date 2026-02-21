@@ -5,16 +5,16 @@ pipeline {
 
     agent {
         kubernetes {
-            inheritFrom 'kaniko'
-            defaultContainer 'kaniko'
+            inheritFrom 'buildkit'
+            defaultContainer 'buildkit'
             yaml """
             apiVersion: v1
             kind: Pod
             metadata:
             spec:
               containers:
-              - name: kaniko
-                image: 'gcr.io/kaniko-project/executor:v1.24.0-debug'
+              - name: buildkit
+                image: 'moby/buildkit:v0.27.0'
                 command:
                 - sleep
                 args:
@@ -71,7 +71,7 @@ pipeline {
     stages {
         stage('Checkout Source Code') {
             steps {
-                container('kaniko') {
+                container('git') {
                     checkout([$class: 'GitSCM',
                               branches: [[name: 'main']],
                               userRemoteConfigs: [[url: "${GIT_URL}", credentialsId: 'GITHUB_AUTH_TOKEN']]
@@ -81,7 +81,7 @@ pipeline {
         }
         stage('Configure Environment') {
             steps {
-                container('kaniko') {
+                container('buildkit') {
                     script {
                         sh '''
                         echo "192.168.1.105 ${REGISTRY_URL}" | tee -a /etc/hosts
@@ -95,7 +95,7 @@ pipeline {
                 expression { env.APP_NAME != 'apigw' }
             }
             steps {
-                container('kaniko') {
+                container('buildkit') {
                     script {
                         def buildRoot = params.BUILD_ROOT == 'true'
                         def appDir = buildRoot ? '.' : APP_NAME
@@ -103,27 +103,31 @@ pipeline {
                         def workspaceDir = env.WORKSPACE
                         def cacheRepo = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}-cache"
                         def dockerfilePath = buildRoot ? "${workspaceDir}/Dockerfile" : "${workspaceDir}/${APP_NAME}/Dockerfile"
+                        def dockerfileDir = dockerfilePath.substring(0, dockerfilePath.lastIndexOf('/'))
+                        def dockerfileName = dockerfilePath.substring(dockerfilePath.lastIndexOf('/') + 1)
+                        def imageWithVersion = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG}"
+                        def imageLatest = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest"
                         
                         sh """
                         cd ${appDir}
-                        /kaniko/executor \
-                        --context=`pwd` \
-                        --dockerfile=${dockerfilePath} \
-                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG} \
-                        --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
-                        --cache=true \
-                        --cache-run-layers=true \
-                        --cache-repo=${cacheRepo} \
-                        --cache-ttl=168h \
-                        --push-retry=2 \
-                        --cleanup \
-                        --log-format=text \
-                        --log-timestamp=true \
-                        --snapshot-mode=redo \
-                        --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
+                        export DOCKER_CONFIG=/kaniko/.docker
+                        if [ -f /kaniko/.docker/certs/ca.crt ]; then
+                          mkdir -p /usr/local/share/ca-certificates || true
+                          cp /kaniko/.docker/certs/ca.crt /usr/local/share/ca-certificates/harbor-ca.crt || true
+                          update-ca-certificates || true
+                        fi
+
+                        buildctl-daemonless.sh build \
+                        --frontend dockerfile.v0 \
+                        --local context=${dockerfileDir} \
+                        --local dockerfile=${dockerfileDir} \
+                        --opt filename=${dockerfileName} \
+                        --import-cache type=registry,ref=${cacheRepo} \
+                        --export-cache type=registry,ref=${cacheRepo},mode=max \
+                        --output type=image,name=${imageWithVersion},name=${imageLatest},push=true
                         """
 
-                        echo "Kaniko build completed for ${appName}:${IMAGE_VERSION_TAG}"
+                        echo "BuildKit build completed for ${appName}:${IMAGE_VERSION_TAG}"
                     }
                 }
             }
