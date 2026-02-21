@@ -14,7 +14,7 @@ pipeline {
             spec:
               containers:
               - name: kaniko
-                image: 'gcr.io/kaniko-project/executor:debug'
+                                image: 'gcr.io/kaniko-project/executor:v1.24.0-debug'
                 command:
                 - sleep
                 args:
@@ -113,9 +113,12 @@ pipeline {
                         --destination=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:latest \
                         --cache=true \
                         --cache-run-layers=true \
-                        --cache-copy-layers=true \
                         --cache-repo=${cacheRepo} \
                         --cache-ttl=168h \
+                        --push-retry=2 \
+                        --cleanup \
+                        --log-format=text \
+                        --log-timestamp=true \
                         --snapshot-mode=redo \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
                         """
