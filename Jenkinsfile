@@ -115,6 +115,8 @@ pipeline {
                         --snapshot-mode=redo \
                         --registry-certificate "${REGISTRY_URL}=/kaniko/.docker/certs/ca.crt"
                         """
+
+                        echo "Kaniko build completed for ${appName}:${IMAGE_VERSION_TAG}"
                     }
                 }
             }
