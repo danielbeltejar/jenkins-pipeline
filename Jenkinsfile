@@ -154,7 +154,7 @@ EOF
                         --opt filename=${dockerfileName} \
                         --import-cache type=registry,ref=${cacheRepo} \
                         --export-cache type=registry,ref=${cacheRepo},mode=max \
-                        --output type=image,name=${imageWithVersion},name=${imageLatest},push=true
+                        --output type=image,name=${imageWithVersion},${imageLatest},push=true
                         """
 
                         echo "BuildKit build completed for ${appName}:${IMAGE_VERSION_TAG}"
