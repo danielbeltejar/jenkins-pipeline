@@ -14,16 +14,24 @@ pipeline {
             spec:
               containers:
               - name: buildkit
-                image: 'moby/buildkit:v0.27.0'
+                image: 'moby/buildkit:v0.27.0-rootless'
                 command:
                 - sleep
                 args:
                 - infinity
+                env:
+                - name: BUILDKITD_FLAGS
+                  value: --oci-worker-no-process-sandbox --oci-worker-snapshotter=native
+                securityContext:
+                    runAsUser: 1000
+                    runAsGroup: 1000
                 volumeMounts:
                 - name: docker-config
                   mountPath: /kaniko/.docker
                 - name: ca-certificate
                   mountPath: /kaniko/.docker/certs/
+                - name: buildkit-state
+                  mountPath: /home/user/.local/share/buildkit
               - name: helm
                 image: 'mirror.gcr.io/alpine/helm'
                 command:
@@ -44,6 +52,8 @@ pipeline {
               - name: ca-certificate
                 hostPath:
                   path: /nfs/lab-jenkins/certs/
+              - name: buildkit-state
+                emptyDir: {}
             """
         }
     }
@@ -111,11 +121,14 @@ pipeline {
                         sh """
                         cd ${appDir}
                         export DOCKER_CONFIG=/kaniko/.docker
-                        if [ -f /kaniko/.docker/certs/ca.crt ]; then
-                          mkdir -p /usr/local/share/ca-certificates || true
-                          cp /kaniko/.docker/certs/ca.crt /usr/local/share/ca-certificates/harbor-ca.crt || true
-                          update-ca-certificates || true
-                        fi
+
+                                                if [ -f /kaniko/.docker/certs/ca.crt ]; then
+                                                    cat > /tmp/buildkitd.toml <<EOF
+[registry."${REGISTRY_URL}"]
+    ca=["/kaniko/.docker/certs/ca.crt"]
+EOF
+                                                    export BUILDKITD_FLAGS="$BUILDKITD_FLAGS --config /tmp/buildkitd.toml"
+                                                fi
 
                         buildctl-daemonless.sh build \
                         --frontend dockerfile.v0 \
