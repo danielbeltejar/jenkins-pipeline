@@ -12,6 +12,10 @@ pipeline {
             kind: Pod
             metadata:
             spec:
+              hostAliases:
+              - ip: "192.168.1.105"
+                hostnames:
+                - "harbor.server.local"
               containers:
               - name: buildkit
                 image: 'moby/buildkit:v0.27.0-rootless'
@@ -94,7 +98,11 @@ pipeline {
                 container('buildkit') {
                     script {
                         sh '''
-                        echo "192.168.1.105 ${REGISTRY_URL}" | tee -a /etc/hosts
+                        if grep -q "${REGISTRY_URL}" /etc/hosts; then
+                            echo "Registry host alias present: ${REGISTRY_URL}"
+                        else
+                            echo "Warning: ${REGISTRY_URL} not present in /etc/hosts"
+                        fi
                         '''
                     }
                 }
