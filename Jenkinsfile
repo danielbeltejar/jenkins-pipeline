@@ -48,6 +48,19 @@ pipeline {
                 - sleep
                 args:
                 - infinity
+              - name: trivy
+                image: 'aquasec/trivy:0.69.3'
+                command:
+                - sleep
+                args:
+                - infinity
+                volumeMounts:
+                - name: docker-config
+                  mountPath: /kaniko/.docker
+                - name: ca-certificate
+                  mountPath: /kaniko/.docker/certs/
+                - name: trivy-cache
+                  mountPath: /root/.cache/trivy
               restartPolicy: Never
               volumes:
               - name: docker-config
@@ -57,6 +70,8 @@ pipeline {
                 hostPath:
                   path: /nfs/lab-jenkins/certs/
               - name: buildkit-state
+                emptyDir: {}
+              - name: trivy-cache
                 emptyDir: {}
             """
         }
@@ -158,6 +173,79 @@ EOF
                         """
 
                         echo "BuildKit build completed for ${appName}:${IMAGE_VERSION_TAG}"
+                    }
+                }
+            }
+        }
+        stage('Security Scan') {
+            steps {
+                container('trivy') {
+                    script {
+                        def buildRoot = params.BUILD_ROOT == 'true'
+                        def appDir = buildRoot ? '.' : APP_NAME
+                        def appName = APP_NAME
+
+                        // Configure custom CA certificates for Harbor registry
+                        sh '''
+                        if [ -f /kaniko/.docker/certs/ca.crt ]; then
+                            if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+                                cat /etc/ssl/certs/ca-certificates.crt /kaniko/.docker/certs/ca.crt > /tmp/combined-ca.crt
+                            elif [ -f /etc/ssl/cert.pem ]; then
+                                cat /etc/ssl/cert.pem /kaniko/.docker/certs/ca.crt > /tmp/combined-ca.crt
+                            else
+                                cp /kaniko/.docker/certs/ca.crt /tmp/combined-ca.crt
+                            fi
+                            export SSL_CERT_FILE=/tmp/combined-ca.crt
+                        fi
+                        '''
+
+                        // IaC misconfiguration scan (Dockerfile + Helm chart)
+                        echo "=== IaC Misconfiguration Scan ==="
+                        sh """
+                        if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
+                        trivy config --severity MEDIUM,HIGH,CRITICAL ${appDir} || true
+                        """
+
+                        echo "=== IaC Misconfiguration Gate (CRITICAL) ==="
+                        sh """
+                        if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
+                        trivy config --severity CRITICAL --exit-code 1 --skip-check-update ${appDir}
+                        """
+
+                        // Container image vulnerability scan (skip for apigw)
+                        if (env.APP_NAME != 'apigw') {
+                            def imageWithVersion = "${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}/${appName}:${IMAGE_VERSION_TAG}"
+
+                            echo "=== Image Vulnerability Scan: ${imageWithVersion} ==="
+                            sh """
+                            if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
+                            export DOCKER_CONFIG=/kaniko/.docker
+                            trivy image \\
+                                --severity HIGH,CRITICAL \\
+                                --ignore-unfixed \\
+                                --scanners vuln \\
+                                --no-progress \\
+                                ${imageWithVersion} || true
+                            """
+
+                            echo "=== Image Vulnerability Gate (CRITICAL) ==="
+                            sh """
+                            if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
+                            export DOCKER_CONFIG=/kaniko/.docker
+                            trivy image \\
+                                --severity CRITICAL \\
+                                --ignore-unfixed \\
+                                --exit-code 1 \\
+                                --scanners vuln \\
+                                --no-progress \\
+                                --skip-db-update \\
+                                ${imageWithVersion}
+                            """
+                        } else {
+                            echo "Image vulnerability scan skipped for APP_NAME=apigw"
+                        }
+
+                        echo "Security scan completed successfully."
                     }
                 }
             }
