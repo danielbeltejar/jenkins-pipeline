@@ -1,85 +1,58 @@
-# Jenkins Pipeline para CI/CD con Docker y Helm
+# Pipeline CI/CD con BuildKit y Helm
 
-Esta pipeline de Jenkins automatiza el proceso de construcción, empaquetado y despliegue de aplicaciones utilizando Docker y Helm. Está diseñada para repositorios monorepo (con múltiples aplicaciones en un solo repo) y repositorios con subdirectorios (cada uno con su propia aplicación).
-
-## Descripción General
-
-La pipeline realiza los siguientes pasos principales:
-- Checkout del código fuente desde un repositorio Git.
-- Configuración del entorno (ej. hosts para registry).
-- Construcción de imágenes Docker usando Kaniko.
-- Empaquetado de charts de Helm.
-- Subida de charts a un repositorio Git de Helm.
-- Despliegue con Helm en Kubernetes.
-
-Soporta dos modos de operación basados en el parámetro `BUILD_ROOT`:
-- **BUILD_ROOT=true**: Construye desde la raíz del repositorio (monorepo). Usa `APP_NAME` para etiquetar la imagen y el chart.
-- **BUILD_ROOT=false**: Construye desde el subdirectorio especificado en `APP_NAME`.
+Pipeline de Jenkins para construir imágenes Docker (BuildKit), empaquetar charts Helm y desplegar en Kubernetes con verificación automática de rollout y rollback.
 
 ## Parámetros
 
-- **GIT_URL** (string): URL del repositorio Git (ej. `https://github.com/user/repo`).
-- **APP_NAME** (string): Nombre de la aplicación (ej. `front`, `back`). Para `BUILD_ROOT=false`, especifica el subdirectorio a construir.
-- **BUILD_ROOT** (string, default: 'false'): 'true' para monorepo (raíz), 'false' para subdirectorios.
+| Parámetro | Descripción |
+|-----------|-------------|
+| `GIT_URL` | URL del repositorio Git de la aplicación |
+| `APP_NAME` | Nombre de la aplicación (ej. `front`, `back`). Con `BUILD_ROOT=false` indica el subdirectorio |
+| `BUILD_ROOT` | `true`: construye desde la raíz (monorepo). `false` (defecto): construye desde el subdirectorio `APP_NAME` |
 
-## Stages
+## Etapas
 
-### 1. Declarative: Checkout SCM
-- Obtiene el Jenkinsfile desde el repositorio de pipelines.
+| # | Etapa | Contenedor | Descripción |
+|---|-------|------------|-------------|
+| 1 | **Checkout Source Code** | `git` | Clona el repositorio de la aplicación desde `GIT_URL` |
+| 2 | **Configure Environment** | `buildkit` | Verifica la resolución DNS del registry Harbor |
+| 3 | **Build Docker Image** | `buildkit` | Construye y sube la imagen con BuildKit. Usa caché de registry. Se omite si `APP_NAME=apigw` |
+| 4 | **Package Helm Chart** | `helm` | Actualiza `appVersion` en `Chart.yaml` y empaqueta el chart |
+| 5 | **Upload Helm Package** | `git` | Sube el chart al repo [helm-charts](https://github.com/danielbeltejar/helm-charts) (rama `develop`). Usa lock para evitar conflictos |
+| 6 | **Deploy with Helm** | `helm` | Ejecuta `helm upgrade --install` del chart empaquetado |
+| 7 | **Verify Deployment** | `helm` | Verifica el rollout de Deployments, StatefulSets y DaemonSets. Timeout: 5 min. Si falla: recopila diagnósticos y ejecuta `helm rollback` automático |
 
-### 2. Checkout Source Code
-- Clona el repositorio de la aplicación usando `GIT_URL`.
+## Contenedores del Pod
 
-### 3. Configure Environment
-- Configura el entorno, como agregar entradas a `/etc/hosts` para el registry de Harbor.
-
-### 4. Build Docker Image
-- Construye la imagen Docker usando Kaniko.
-- Para monorepo: contexto en raíz, Dockerfile en raíz.
-- Para subdirs: contexto en subdir, Dockerfile en subdir.
-- Push a Harbor registry.
-
-### 5. Package Helm Chart
-- Actualiza la versión en `Chart.yaml`.
-- Empaqueta el chart de Helm.
-
-### 6. Upload Helm Package to GitHub
-- Sube el chart empaquetado a un repositorio Git de charts (ej. `helm-charts`).
-- Organiza por `IMAGE_REPO` y `APP_NAME`.
-
-### 7. Deploy with Helm
-- Despliega el chart usando Helm upgrade/install.
+| Contenedor | Imagen | Uso |
+|------------|--------|-----|
+| `buildkit` | `moby/buildkit:v0.27.0-rootless` | Construcción de imágenes Docker |
+| `helm` | `alpine/k8s:1.32.3` | Helm + kubectl (empaquetado, despliegue, verificación) |
+| `git` | `alpine/git` | Operaciones Git |
 
 ## Requisitos
 
-- **Jenkins con Kubernetes plugin**: Para ejecutar en pods con contenedores Kaniko, Helm y Git.
-- **Credenciales**:
-  - `GITHUB_AUTH_TOKEN`: Para acceso a GitHub.
-  - `DISCORD_CREDENTIALS`: Para notificaciones (no usado en el código actual).
-  - `HARBOR_CREDENTIALS`: Para push a Harbor.
-- **ConfigMaps/Secrets**:
-  - `docker-auth-config`: Para autenticación en Docker registry.
-  - Certificados en `/nfs/lab-jenkins/certs/`.
-- **Repositorio de aplicación**: Debe tener `Dockerfile` y `k8s/` (para Helm).
-- **Repositorio de Helm charts**: `https://github.com/danielbeltejar/helm-charts` en rama `develop`.
+- Jenkins con **Kubernetes plugin** y pod template `buildkit`
+- **Credenciales**: `GITHUB_AUTH_TOKEN`, `HARBOR_CREDENTIALS`, `DISCORD_CREDENTIALS`
+- **ConfigMap** `docker-auth-config` con autenticación para el registry
+- Certificados CA en `/nfs/lab-jenkins/certs/`
+- Repositorio de la aplicación con `Dockerfile` y directorio `k8s/` (chart Helm)
 
 ## Uso
 
-1. Configura el job en Jenkins como Pipeline desde SCM, apuntando a este repositorio.
-2. Ejecuta el job con los parámetros deseados.
-3. Para monorepo: `BUILD_ROOT=true`, `APP_NAME=front`.
-4. Para subdirs: `BUILD_ROOT=false`, `APP_NAME=front` (construye solo el subdirectorio `front`).
+```
+# Monorepo (Dockerfile en raíz)
+BUILD_ROOT=true  APP_NAME=front  GIT_URL=https://github.com/user/repo
 
-## Mejores Prácticas Implementadas
+# Subdirectorio (Dockerfile en APP_NAME/)
+BUILD_ROOT=false APP_NAME=back   GIT_URL=https://github.com/user/repo
+```
 
-- **Seguridad**: Uso de credenciales y certificados.
-- **Escalabilidad**: Soporte para monorepo y subdirs específicos.
-- **Logging**: Salida detallada en consola.
+## Resolución de problemas
 
-## Troubleshooting
-
-- **Error en cd**: Asegúrate de que los subdirs existan y tengan `Dockerfile` para `BUILD_ROOT=false`.
-- **Push fallido**: Verifica credenciales de Harbor y conectividad.
-- **Helm deploy**: Asegúrate de que el cluster Kubernetes esté accesible.
-
-Para más detalles, revisa el `Jenkinsfile`.
+| Problema | Solución |
+|----------|----------|
+| Error en `cd` | Verificar que el subdirectorio existe y contiene `Dockerfile` |
+| Push al registry falla | Comprobar credenciales de Harbor y conectividad de red |
+| Verificación de rollout falla | Revisar los diagnósticos en el log (eventos de pods, estado). El rollback se ejecuta automáticamente |
+| Rollback falla | Comprobar RBAC del service account del pod Jenkins |

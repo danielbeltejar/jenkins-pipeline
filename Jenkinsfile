@@ -37,7 +37,7 @@ pipeline {
                 - name: buildkit-state
                   mountPath: /home/user/.local/share/buildkit
               - name: helm
-                image: 'mirror.gcr.io/alpine/helm'
+                image: 'mirror.gcr.io/alpine/k8s:1.32.3'
                 command:
                 - sleep
                 args:
@@ -216,6 +216,73 @@ EOF
                         cd ${appDir}
                         helm upgrade --install ${HELM_RELEASE_NAME} ${appName}-${IMAGE_VERSION_TAG}.tgz --set registry=${REGISTRY_URL}/danielbeltejar/${IMAGE_REPO}
                         """
+                    }
+                }
+            }
+        }
+        stage('Verify Deployment') {
+            steps {
+                container('helm') {
+                    script {
+                        def rolloutTimeout = '300s'
+                        def workloadTypes = ['Deployment', 'StatefulSet', 'DaemonSet']
+                        def namespace = sh(script: "kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}'", returnStdout: true).trim() ?: 'default'
+
+                        echo "Verifying rollout for release '${HELM_RELEASE_NAME}' in namespace '${namespace}'"
+
+                        def manifest = sh(script: "helm get manifest ${HELM_RELEASE_NAME}", returnStdout: true).trim()
+
+                        def workloads = []
+                        def currentKind = ''
+                        manifest.eachLine { line ->
+                            if (line =~ /^kind:\s+(.+)/) {
+                                currentKind = (line =~ /^kind:\s+(.+)/)[0][1].trim()
+                            }
+                            if (line =~ /^\s+name:\s+(.+)/ && workloadTypes.contains(currentKind)) {
+                                def name = (line =~ /^\s+name:\s+(.+)/)[0][1].trim()
+                                workloads << [kind: currentKind, name: name]
+                                currentKind = ''
+                            }
+                        }
+                        workloads = workloads.unique()
+
+                        if (workloads.isEmpty()) {
+                            echo "WARNING: No Deployment, StatefulSet, or DaemonSet found in release '${HELM_RELEASE_NAME}'. Skipping rollout verification."
+                            return
+                        }
+
+                        echo "Found ${workloads.size()} workload(s) to verify: ${workloads.collect { it.kind + '/' + it.name }.join(', ')}"
+
+                        try {
+                            workloads.each { wl ->
+                                echo "Waiting for rollout: ${wl.kind}/${wl.name} (timeout: ${rolloutTimeout})"
+                                sh "kubectl rollout status ${wl.kind.toLowerCase()}/${wl.name} -n ${namespace} --timeout=${rolloutTimeout}"
+                            }
+
+                            echo "All workloads rolled out successfully."
+                            sh "kubectl get pods -n ${namespace} -l app.kubernetes.io/instance=${HELM_RELEASE_NAME} -o wide || true"
+
+                        } catch (Exception e) {
+                            echo "ROLLOUT VERIFICATION FAILED: ${e.getMessage()}"
+
+                            echo "=== Pod Status ==="
+                            sh "kubectl get pods -n ${namespace} -l app.kubernetes.io/instance=${HELM_RELEASE_NAME} -o wide || true"
+
+                            echo "=== Pod Events ==="
+                            workloads.each { wl ->
+                                sh "kubectl describe ${wl.kind.toLowerCase()}/${wl.name} -n ${namespace} | tail -30 || true"
+                            }
+                            sh "kubectl get pods -n ${namespace} -l app.kubernetes.io/instance=${HELM_RELEASE_NAME} -o jsonpath='{range .items[*]}{.metadata.name}{\"\\n\"}{end}' | while read pod; do echo \"--- Events for pod: \$pod ---\"; kubectl describe pod \$pod -n ${namespace} | grep -A 20 'Events:' || true; done"
+
+                            echo "=== Recent Namespace Events ==="
+                            sh "kubectl get events -n ${namespace} --sort-by=.lastTimestamp | tail -20 || true"
+
+                            echo "Rolling back release '${HELM_RELEASE_NAME}' to previous revision..."
+                            sh "helm rollback ${HELM_RELEASE_NAME} 0 --wait --timeout ${rolloutTimeout}"
+                            echo "Rollback completed."
+
+                            error("Deployment verification failed for release '${HELM_RELEASE_NAME}'. Rollback executed. Check logs above for diagnostics.")
+                        }
                     }
                 }
             }
