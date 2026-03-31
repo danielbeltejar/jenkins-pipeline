@@ -226,7 +226,7 @@ EOF
                     script {
                         def rolloutTimeout = '300s'
                         def workloadTypes = ['Deployment', 'StatefulSet', 'DaemonSet']
-                        def namespace = sh(script: "kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}'", returnStdout: true).trim() ?: 'default'
+                        def namespace = sh(script: "cat /var/run/secrets/kubernetes.io/serviceaccount/namespace 2>/dev/null || echo 'default'", returnStdout: true).trim()
 
                         echo "Verifying rollout for release '${HELM_RELEASE_NAME}' in namespace '${namespace}'"
 
