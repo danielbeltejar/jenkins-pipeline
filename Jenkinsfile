@@ -85,13 +85,13 @@ pipeline {
         GIT_CREDENTIALS = credentials('GITHUB_AUTH_TOKEN')
         DISCORD_CREDENTIALS = credentials('DISCORD_CREDENTIALS')
         HARBOR_CREDENTIALS = credentials('HARBOR_CREDENTIALS')
+        TRIVY_TOKEN = credentials('TRIVY_TOKEN')
         
         GIT_URL = "https://github.com/${params.GIT_URL.split('github.com/')[1]}"
         APP_NAME = "${params.APP_NAME}"
         BUILD_ROOT = "${params.BUILD_ROOT}"
         
         REGISTRY_URL = "harbor.server.local"
-        TRIVY_SERVER_URL = "http://trivy-server.trivy-system.svc:4954"
         HELM_RELEASE_NAME = "${JOB_NAME.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase()}"
         HELM_CHART_DIR = "k8s/"
         IMAGE_REPO = "${GIT_URL.tokenize("/")[-1].replaceAll(".git", "").toLowerCase()}"
@@ -222,7 +222,7 @@ EOF
                             if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
                             export DOCKER_CONFIG=/kaniko/.docker
                             trivy image \\
-                                --server ${TRIVY_SERVER_URL} \\
+                                --server http://trivy-server.trivy-system.svc:4954 \\
                                 --severity HIGH,CRITICAL \\
                                 --ignore-unfixed \\
                                 --scanners vuln \\
@@ -235,7 +235,7 @@ EOF
                             if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
                             export DOCKER_CONFIG=/kaniko/.docker
                             trivy image \\
-                                --server ${TRIVY_SERVER_URL} \\
+                                --server http://trivy-server.trivy-system.svc:4954 \\
                                 --severity CRITICAL \\
                                 --ignore-unfixed \\
                                 --exit-code 1 \\
