@@ -91,6 +91,7 @@ pipeline {
         BUILD_ROOT = "${params.BUILD_ROOT}"
         
         REGISTRY_URL = "harbor.server.local"
+        TRIVY_SERVER_URL = "http://trivy-server.trivy-system.svc:4954"
         HELM_RELEASE_NAME = "${JOB_NAME.replaceAll("[^a-zA-Z0-9]", "-").toLowerCase()}"
         HELM_CHART_DIR = "k8s/"
         IMAGE_REPO = "${GIT_URL.tokenize("/")[-1].replaceAll(".git", "").toLowerCase()}"
@@ -221,6 +222,7 @@ EOF
                             if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
                             export DOCKER_CONFIG=/kaniko/.docker
                             trivy image \\
+                                --server ${TRIVY_SERVER_URL} \\
                                 --severity HIGH,CRITICAL \\
                                 --ignore-unfixed \\
                                 --scanners vuln \\
@@ -233,12 +235,12 @@ EOF
                             if [ -f /tmp/combined-ca.crt ]; then export SSL_CERT_FILE=/tmp/combined-ca.crt; fi
                             export DOCKER_CONFIG=/kaniko/.docker
                             trivy image \\
+                                --server ${TRIVY_SERVER_URL} \\
                                 --severity CRITICAL \\
                                 --ignore-unfixed \\
                                 --exit-code 1 \\
                                 --scanners vuln \\
                                 --no-progress \\
-                                --skip-db-update \\
                                 ${imageWithVersion}
                             """
                         } else {
