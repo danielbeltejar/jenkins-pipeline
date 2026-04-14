@@ -61,6 +61,12 @@ pipeline {
                   mountPath: /kaniko/.docker/certs/
                 - name: trivy-cache
                   mountPath: /root/.cache/trivy
+              - name: droast
+                image: 'ghcr.io/immanuwell/dockerfile-roast:1.0.0'
+                command:
+                - sleep
+                args:
+                - infinity
               restartPolicy: Never
               volumes:
               - name: docker-config
@@ -73,12 +79,6 @@ pipeline {
                 emptyDir: {}
               - name: trivy-cache
                 emptyDir: {}
-              - name: droast
-                image: 'ghcr.io/immanuwell/dockerfile-roast:1.0.0'
-                command:
-                - sleep
-                args:
-                - infinity
             """
         }
     }
