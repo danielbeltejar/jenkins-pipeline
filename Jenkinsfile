@@ -73,6 +73,12 @@ pipeline {
                 emptyDir: {}
               - name: trivy-cache
                 emptyDir: {}
+              - name: droast
+                image: 'ghcr.io/immanuwell/dockerfile-roast:1.0.0'
+                command:
+                - sleep
+                args:
+                - infinity
             """
         }
     }
@@ -120,6 +126,27 @@ pipeline {
                             echo "Warning: ${REGISTRY_URL} not present in /etc/hosts"
                         fi
                         '''
+                    }
+                }
+            }
+        }
+        stage('Lint Dockerfile') {
+            when {
+                expression { env.APP_NAME != 'apigw' }
+            }
+            steps {
+                container('droast') {
+                    script {
+                        def buildRoot = params.BUILD_ROOT == 'true'
+                        def dockerfilePath = buildRoot ? "${env.WORKSPACE}/Dockerfile" : "${env.WORKSPACE}/${APP_NAME}/Dockerfile"
+
+                        echo "=== Dockerfile Lint (informative) ==="
+                        sh "droast --no-fail ${dockerfilePath} || true"
+
+                        echo "=== Dockerfile Lint Gate (ERROR) ==="
+                        sh "droast --min-severity error ${dockerfilePath}"
+
+                        echo "Dockerfile lint completed successfully."
                     }
                 }
             }
