@@ -111,21 +111,6 @@ pipeline {
                 }
             }
         }
-        stage('Configure Environment') {
-            steps {
-                container('buildkit') {
-                    script {
-                        sh '''
-                        if grep -q "${REGISTRY_URL}" /etc/hosts; then
-                            echo "Registry host alias present: ${REGISTRY_URL}"
-                        else
-                            echo "Warning: ${REGISTRY_URL} not present in /etc/hosts"
-                        fi
-                        '''
-                    }
-                }
-            }
-        }
         stage('Lint Dockerfile') {
             when {
                 expression { env.APP_NAME != 'apigw' }
