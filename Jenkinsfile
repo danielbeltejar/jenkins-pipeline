@@ -12,10 +12,6 @@ pipeline {
             kind: Pod
             metadata:
             spec:
-              hostAliases:
-              - ip: "192.168.1.105"
-                hostnames:
-                - "harbor.server.local"
               containers:
               - name: buildkit
                 image: 'moby/buildkit:v0.27.0-rootless'
